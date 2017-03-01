@@ -1,20 +1,19 @@
 package com.ottamotta.pavement.tracking;
 
-import android.location.Location;
-
 import com.ottamotta.pavement.accelerometer.Acceleration;
+import com.ottamotta.pavement.location.Loc;
 
 public class AccelerationWithLocation {
 
-    private final Location location;
+    private final Loc location;
     private final Acceleration acceleration;
 
-    public AccelerationWithLocation(Location location, Acceleration acceleration) {
+    public AccelerationWithLocation(Loc location, Acceleration acceleration) {
         this.location = location;
         this.acceleration = acceleration;
     }
 
-    public Location getLocation() {
+    public Loc getLocation() {
         return location;
     }
 

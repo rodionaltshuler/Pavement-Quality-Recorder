@@ -44,9 +44,10 @@ public class Tracker {
                     saveTrackingStatus(tracking);
                 },
                 error -> {
-                    error.printStackTrace();
-                    Log.e("Tracking", "Error: " + error.getMessage());
+                    saveTrackingStatus(false);
+                    Log.e("Tracking", "Error chaging tracking status: " + error.getMessage());
                 });
+
     }
 
     private void restoreState() {
@@ -58,6 +59,7 @@ public class Tracker {
     }
 
     public void stop() {
+        Log.d("Tracking", "Stopping service");
         trackingStatusSubject.onNext(false);
     }
 

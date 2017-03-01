@@ -7,6 +7,7 @@ import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Build;
 import android.provider.Settings;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.util.Log;
 
@@ -25,6 +26,7 @@ import rx.Observable;
 import rx.Observer;
 import rx.Subscription;
 import rx.subjects.PublishSubject;
+import rx.subscriptions.CompositeSubscription;
 
 public class LocationSubject {
 
@@ -32,6 +34,12 @@ public class LocationSubject {
 
     private static final int MIN_INTERVAL = 1000;
     private static final int FASTEST_INTERVAL = 500;
+
+    @Nullable
+    private LocationListener locationListener;
+
+    @Nullable
+    private GoogleApiClient connectedGoogleApiClient;
 
     private final LocationRequest locationRequest = new LocationRequest();
 
@@ -53,32 +61,43 @@ public class LocationSubject {
         return instance;
     }
 
-    private PublishSubject<Location> publishSubjectLocation;
+    private final PublishSubject<Location> publishSubjectLocation = PublishSubject.create();
 
     private LocationSubject(Context context) {
         this.context = context;
-        Log.d(TAG, "Subscribing to location observable");
-        restart();
     }
 
     public Observable<Location> getLocationObservable() {
         return publishSubjectLocation.asObservable();
     }
 
+    public void stop() {
+        locationSubscription.unsubscribe();
+        /*if (connectedGoogleApiClient != null && locationListener != null) {
+            Log.d("Tracking", "Stopping locaiton updates");
+            LocationServices.FusedLocationApi.removeLocationUpdates(connectedGoogleApiClient, locationListener);
+        }*/
+    }
+
+    public Observable<Location> start() {
+        restart();
+        return getLocationObservable();
+    }
+
+    private CompositeSubscription locationSubscription = new CompositeSubscription();
+
     private void restart() {
-
-        publishSubjectLocation = PublishSubject.create();
-
         Observable<Location> observable =
                 restartableLocationObservable();
 
-        observable.subscribe(
+        locationSubscription.add(
+                observable.subscribe(
                 location -> publishSubjectLocation.onNext(location),
                 error -> {
                     //todo need to handle exceptions here
                     publishSubjectLocation.onError(error);
                 }
-        );
+        ));
     }
 
     private Observable<Location> restartableLocationObservable() {
@@ -89,11 +108,13 @@ public class LocationSubject {
     }
 
     private Observable<Location> requestLocationObservable(GoogleApiClient connectedGoogleApiClient) {
+        this.connectedGoogleApiClient = connectedGoogleApiClient;
         return Observable.<Location>create(locationSubsrciber -> {
             LocationListener locationListener = location -> {
                 Log.d(TAG, "location changed: " + location.toString());
                 locationSubsrciber.onNext(location);
             };
+            LocationSubject.this.locationListener = locationListener;
             Log.d(TAG, "Requesting location updates");
             try {
                 LocationServices.FusedLocationApi.requestLocationUpdates(connectedGoogleApiClient, locationRequest, locationListener);
@@ -152,13 +173,6 @@ public class LocationSubject {
             boolean networkEnabled = systemLocationManager.isProviderEnabled(android.location.LocationManager.NETWORK_PROVIDER);
             return gpsEnabled || networkEnabled;
         }
-    }
-
-    public Subscription subscribe(Observer<Location> subscriber) {
-        if (publishSubjectLocation.hasThrowable()) {
-            restart();
-        }
-        return publishSubjectLocation.subscribe(subscriber);
     }
 
 }

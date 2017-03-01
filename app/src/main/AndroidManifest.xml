@@ -37,6 +37,8 @@
         <activity android:name=".location.PromptUserActivity" />
 
         <service android:name=".tracking.TrackingService"/>
+
+        <service android:name=".tracking.UploadIntentService" />
     </application>
 
 </manifest>

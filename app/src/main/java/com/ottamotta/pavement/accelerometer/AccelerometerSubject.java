@@ -8,10 +8,9 @@ import android.hardware.SensorManager;
 import android.util.Log;
 
 import rx.Observable;
-import rx.Observer;
-import rx.Subscription;
 import rx.functions.Action1;
 import rx.subjects.PublishSubject;
+import rx.subscriptions.CompositeSubscription;
 
 
 public class AccelerometerSubject {
@@ -33,31 +32,35 @@ public class AccelerometerSubject {
 
     private PublishSubject<Acceleration> publishSubjectAcceleration;
 
+    private CompositeSubscription sensorsSubscription = new CompositeSubscription();
+
     private AccelerometerSubject(Context context) {
         this.context = context;
         sensorManager = (SensorManager) context.getSystemService(Context.SENSOR_SERVICE);
-
         publishSubjectAcceleration = PublishSubject.create();
     }
 
     public void stop() {
+        Log.d("Tracking", "Stopping accelerometer updates");
         sensorManager.unregisterListener(sensorEventListener);
+        sensorsSubscription.unsubscribe();
     }
 
     public Observable<Acceleration> start() {
-        _start();
+        startSensors();
         return publishSubjectAcceleration.asObservable();
     }
 
     public void start(Action1<Acceleration> onNextAction) {
-        _start();
-        publishSubjectAcceleration.subscribe(onNextAction,
+        startSensors();
+        sensorsSubscription.add(publishSubjectAcceleration.subscribe(
+                onNextAction,
                 error -> {
                     Log.e("Tracking", error.getMessage());
-                });
+                }));
     }
 
-    private void _start() {
+    private void startSensors() {
         sensorManager.registerListener(sensorEventListener,
                 sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION),
                 SensorManager.SENSOR_DELAY_GAME);

@@ -1,5 +1,7 @@
 package com.ottamotta.pavement.accelerometer;
 
+import android.text.TextUtils;
+
 import java.util.Arrays;
 
 public class Acceleration {
@@ -15,7 +17,7 @@ public class Acceleration {
 
     @Override
     public String toString() {
-        return "Acceleration{" + Arrays.toString(values);
+        return "{" + timestamp + "," + Arrays.toString(values) + "}";
     }
 
     public float[] getValues() {

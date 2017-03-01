@@ -8,6 +8,7 @@ import android.support.annotation.Nullable;
 import android.util.Log;
 
 import com.ottamotta.pavement.accelerometer.AccelerometerSubject;
+import com.ottamotta.pavement.location.Loc;
 import com.ottamotta.pavement.location.LocationSubject;
 import com.ottamotta.pavement.location.PromptUserActivity;
 
@@ -29,30 +30,15 @@ public class TrackingService extends Service {
         accelerometerSubject = AccelerometerSubject.getInstance(getApplicationContext());
         locationSubject = LocationSubject.getInstance(getApplicationContext());
 
-        locationSubject.getLocationObservable().subscribe(new Observer<Location>() {
-            @Override
-            public void onCompleted() {
-
-            }
-
-            @Override
-            public void onError(Throwable e) {
-                PromptUserActivity.startResolution(getApplicationContext(), e);
-            }
-
-            @Override
-            public void onNext(Location location) {
-
-            }
-        });
-
         tracker = Tracker.getInstance(getApplicationContext());
         tracker.getTrackingStatusObservable().subscribe(tracking -> {
             try {
                 if (!tracking) {
+                    Log.d("Tracking", "TrackingService stopping self");
                     stopSelf();
+                    locationSubject.stop();
+                    accelerometerSubject.stop();
                 } else {
-                    //todo check permissions first
                     startTracking();
                 }
             } catch (Exception e) {
@@ -60,6 +46,11 @@ public class TrackingService extends Service {
             }
         }, error -> {
             Log.e("Tracking", "Error: " + error.getMessage());
+        });
+
+        //UPLOAD DATA
+        tracker.getAccelerationsByLocationObservable().subscribe(accelerationsByLocation -> {
+            UploadIntentService.start(getApplicationContext(), accelerationsByLocation);
         });
     }
 
@@ -75,8 +66,9 @@ public class TrackingService extends Service {
     }
 
     private void startTracking() {
+        Log.d("Tracking", "TrackingService.startTracking()");
         Observable<AccelerationWithLocation> accelerationWithLocationObservable = Observable.combineLatest(
-                locationSubject.getLocationObservable(),
+                locationSubject.start().map(Loc::fromLocation),
                 accelerometerSubject.start(),
                 AccelerationWithLocation::new);
 
